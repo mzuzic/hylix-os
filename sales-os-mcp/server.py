@@ -9,15 +9,23 @@ Auth: bearer token per client. Set SALES_OS_TOKENS as JSON:
     {"<secret-token>": "<client_id>", ...}
 """
 
+import datetime as _dt
 import json
 import os
+import secrets
 
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_access_token
+from fastmcp.utilities.types import File
+from pydantic import BaseModel, Field
 
+import pdf as pdfgen
 import sops
 import storage
+
+# Where persistent data lives (same volume as the SQLite DB).
+_DATA_DIR = os.path.dirname(os.environ.get("SALES_OS_DB", "/data/sales_os.db")) or "/data"
 
 # --- Auth ------------------------------------------------------------------
 
@@ -45,7 +53,9 @@ INSTRUCTIONS = (
     "without being asked:\n"
     "- When the user describes or dictates a job, or asks to quote / price / estimate "
     "work, call `create_quote` with their words verbatim and follow the returned "
-    "`sop` field EXACTLY. Never improvise a quote or pricing from memory.\n"
+    "`sop` field EXACTLY. Never improvise a quote or pricing from memory. Once the "
+    "user approves the drafted quote, call `render_quote_pdf` to produce a polished, "
+    "branded PDF for them to download and send.\n"
     "- Before a sales call, use `get_precall_brief`. After a call, use "
     "`draft_followup` and/or `score_call`.\n"
     "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
@@ -70,6 +80,18 @@ def _profile_context(client_id: str) -> dict[str, str]:
         if doc:
             out[meta["name"]] = doc["content"]
     return out
+
+
+def _branding(client_id: str) -> dict:
+    """Client branding for PDFs, from the profile/branding doc (JSON). {} if absent."""
+    doc = storage.read_doc(client_id, "profile", "branding")
+    if not doc:
+        return {}
+    try:
+        data = json.loads(doc["content"])
+        return data if isinstance(data, dict) else {}
+    except (ValueError, TypeError):
+        return {}
 
 
 # --- Second Brain tools ------------------------------------------------------
@@ -154,6 +176,71 @@ def create_quote(job_description: str, customer: str = "") -> dict:
     }
 
 
+class QuoteLineItem(BaseModel):
+    """One priced line on a quote. The server computes the line amount."""
+    description: str = Field(description="What the line covers, e.g. 'Interior painting'")
+    quantity: float = Field(default=1, description="Amount of the unit, e.g. 40")
+    unit: str = Field(default="", description="Unit label, e.g. 'sqm', 'hr', 'each'")
+    unit_price: float = Field(default=0, description="Price per unit in the client's currency")
+
+
+@mcp.tool
+def render_quote_pdf(
+    customer: str,
+    line_items: list[QuoteLineItem],
+    scope_summary: str = "",
+    notes: str = "",
+    tax_rate: float = 0.0,
+    valid_days: int = 14,
+    currency: str = "",
+) -> File:
+    """Render a polished, branded PDF quote and return it as a downloadable file
+    in the conversation. Call this AFTER the user has approved the drafted quote
+    (see create_quote / the quote SOP).
+
+    Pass structured line_items (description, quantity, unit, unit_price) — the
+    server computes each line amount, the subtotal, tax, and total, so do NOT
+    pre-compute or round totals yourself. tax_rate is a fraction (0.2 = 20%);
+    omit or 0 for none. Branding (business name, logo, colours, address, tax id,
+    currency) is pulled from the client's profile/branding doc. A copy is saved
+    to the deal history automatically."""
+    cid = _client()
+    branding = _branding(cid)
+    items = [li.model_dump() for li in line_items]
+    number = f"Q-{_dt.date.today():%Y%m%d}-{secrets.token_hex(2).upper()}"
+
+    data = pdfgen.render_quote(
+        customer=customer,
+        line_items=items,
+        scope_summary=scope_summary,
+        notes=notes,
+        tax_rate=tax_rate,
+        valid_days=valid_days,
+        branding=branding,
+        currency=currency or None,
+        quote_number=number,
+    )
+
+    # Persist a copy on the data volume + note it in the deal history (best effort).
+    try:
+        qdir = os.path.join(_DATA_DIR, "quotes", cid)
+        os.makedirs(qdir, exist_ok=True)
+        with open(os.path.join(qdir, f"{number}.pdf"), "wb") as fh:
+            fh.write(data)
+    except OSError:
+        pass
+    if customer:
+        storage.write_doc(
+            cid, "deal", customer,
+            f"{_dt.date.today():%Y-%m-%d}: quote {number} generated "
+            f"({len(items)} line item(s)).",
+            append=True,
+        )
+
+    safe = (customer or "customer").strip().replace(" ", "-").lower() or "customer"
+    return File(data=data, format="pdf", name=f"quote-{safe}-{number}.pdf")
+
+
 @mcp.tool
 def get_precall_brief(lead_name: str, company: str = "") -> dict:
     """Assemble everything needed for a pre-call brief on a lead/company.
@@ -219,8 +306,9 @@ def quote(job_description: str = "", customer: str = "") -> str:
         f"memory. If the response says no rate card exists, help the user add one via "
         f"second_brain_write(category='profile', name='pricing', ...) first. The user "
         f"may be dictating by voice — expect rough phrasing and confirm any numbers you "
-        f"are unsure about. After the user approves, save the quote to deal/<customer> "
-        f"with second_brain_write. Never send anything; the quote is a draft to review."
+        f"are unsure about. After the user approves, call `render_quote_pdf` (passing "
+        f"the structured line items) to generate a branded PDF, and save the quote to "
+        f"deal/<customer> with second_brain_write. Never send anything; it's a draft."
     )
 
 

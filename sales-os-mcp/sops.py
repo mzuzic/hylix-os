@@ -54,6 +54,12 @@ errors, but never invent job details). Using ONLY the provided context:
 5. SAVE & NEXT STEPS — write the quote to the Second Brain as
    deal/<customer-name> (append if the deal exists), then suggest: send-ready
    email draft? CRM update?
+6. BRANDED PDF — once the user approves the numbers, call `render_quote_pdf`
+   with the STRUCTURED line items (description, quantity, unit, unit_price),
+   the customer, a short scope_summary, any notes/terms, and tax_rate if the
+   rate card defines one. The server computes the amounts and totals and
+   returns a polished branded PDF (branding comes from profile/branding). Do
+   NOT pre-total the lines yourself. Offer the PDF to the user to download/send.
 
 This is a DRAFT for human review. Never present it as sent or final."""
 
