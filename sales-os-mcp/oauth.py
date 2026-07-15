@@ -186,8 +186,10 @@ class SalesOsOAuthProvider(OAuthProvider):
         claims = self._decode(token, "access")
         if not claims:
             return None
+        # client_id carries the TENANT (like the static verifier does) so the
+        # MCP tools resolve the workspace uniformly; the OAuth client is in `azp`.
         return AccessToken(
-            token=token, client_id=claims.get("azp", ""),
+            token=token, client_id=claims.get("sub", ""),
             scopes=claims.get("scope", [SCOPE]), expires_at=claims.get("exp"),
             subject=claims.get("sub"),
         )
