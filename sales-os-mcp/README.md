@@ -19,19 +19,35 @@ client gets the update instantly.
 | `draft_followup(deal_name, transcript?)` | SOP + tone + offers + notes for follow-up email / proposal / CRM update |
 | `score_call(transcript, rep_name?)` | Coaching rubric SOP + ICP context |
 | `create_quote(job_description, customer?)` | Quote SOP + rate card + tone for a dictated job |
-| `list_sops / get_sop(name)` | Fetch latest SOPs — used by client-side stub skills |
+| `list_sops / get_sop(name)` | Fetch latest SOPs |
+
+## Onboarding = connect the connector (no skill upload)
+
+Behaviour that used to require uploading a stub skill per client is now delivered
+by the server itself, so a client only has to **add the connector** — nothing else:
+
+- **Server `instructions`** (sent on connect) tell Claude to call `create_quote`
+  when the user describes/dictates a job, use `get_precall_brief` before calls and
+  `draft_followup` / `score_call` after, and to follow each tool's `sop` exactly
+  without improvising. Defined as `INSTRUCTIONS` in `server.py`.
+- **Prompts** (`@mcp.prompt` in `server.py`) surface "Create a quote", "Pre-call
+  brief", "Draft a follow-up", and "Score a call" in the client's connector "+"
+  menu — same pointer behaviour as the old stub skills, zero upload.
+
+The `client-skills/` stub-skill zip is therefore **legacy/optional** — no longer
+part of onboarding.
 
 ## MVP flow: dictate a job → get a quote
 
 1. Rep dictates into the Claude mobile app: "kitchen repaint for the Hendersons,
    about 40 square meters, some plaster repair."
-2. The `create-quote` stub skill (see `client-skills/create-quote.zip`, uploaded
-   once per client via Settings → Skills) triggers and calls `create_quote`.
+2. Claude (guided by the connector's `instructions`, or the "Create a quote"
+   prompt) calls `create_quote`.
 3. Server returns the quote SOP + the client's rate card (`profile/pricing`),
    offers, and tone. Claude drafts the quote for review and saves it to the deal.
 
 SOPs live in `sops.py` (`REGISTRY`) — edit centrally, every client's next call
-gets the update. Stub skills never need re-uploading.
+gets the update.
 
 Doc conventions: `profile/icp`, `profile/offers`, `profile/tone_of_voice`,
 `deal/<company>`, `transcript/<company>-<date>`.

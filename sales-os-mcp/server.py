@@ -36,7 +36,25 @@ auth = StaticTokenVerifier(
     }
 )
 
-mcp = FastMCP("Sales OS", auth=auth)
+# Sent to the client on connect (MCP `instructions`). This carries the behaviour
+# that used to live in the client-side stub skills, so clients only need to
+# connect the connector — no per-client skill upload.
+INSTRUCTIONS = (
+    "This connector is the client's Sales OS — their per-client sales intelligence "
+    "(the Second Brain) plus standard operating procedures (SOPs). Behave as follows "
+    "without being asked:\n"
+    "- When the user describes or dictates a job, or asks to quote / price / estimate "
+    "work, call `create_quote` with their words verbatim and follow the returned "
+    "`sop` field EXACTLY. Never improvise a quote or pricing from memory.\n"
+    "- Before a sales call, use `get_precall_brief`. After a call, use "
+    "`draft_followup` and/or `score_call`.\n"
+    "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
+    "`second_brain_*` tools rather than inventing them, and follow each tool's "
+    "returned `sop` exactly.\n"
+    "- Everything you produce is a draft for the user to review. Never send anything."
+)
+
+mcp = FastMCP("Sales OS", auth=auth, instructions=INSTRUCTIONS)
 
 
 def _client() -> str:
@@ -180,6 +198,62 @@ def score_call(transcript: str, rep_name: str = "") -> dict:
         "transcript": transcript,
         "icp": _profile_context(_client()).get("icp", ""),
     }
+
+
+# --- Prompts -----------------------------------------------------------------
+# Surface each SOP as a connector prompt (appears in the client's "+" menu on
+# connect). These replace the uploaded stub skills: same "call the tool, follow
+# the SOP, never improvise" pointer behaviour, delivered by the connector itself.
+
+
+@mcp.prompt(title="Create a quote")
+def quote(job_description: str = "", customer: str = "") -> str:
+    """Create a customer quote or estimate from a described or dictated job.
+    Use whenever the user describes a job, or asks to quote / price / estimate work."""
+    job = job_description or "the job the user just described (ask if it is unclear)"
+    who = f" for customer '{customer}'" if customer else ""
+    return (
+        f"Create a quote{who}. Call the `create_quote` tool with the user's job "
+        f"description verbatim ({job}) and the customer name if known, then follow the "
+        f"returned `sop` field EXACTLY — never improvise pricing or quote format from "
+        f"memory. If the response says no rate card exists, help the user add one via "
+        f"second_brain_write(category='profile', name='pricing', ...) first. The user "
+        f"may be dictating by voice — expect rough phrasing and confirm any numbers you "
+        f"are unsure about. After the user approves, save the quote to deal/<customer> "
+        f"with second_brain_write. Never send anything; the quote is a draft to review."
+    )
+
+
+@mcp.prompt(title="Pre-call brief")
+def precall_brief(lead_name: str = "", company: str = "") -> str:
+    """Assemble a pre-call brief for a lead or company before a sales call."""
+    return (
+        "Prepare a pre-call brief. Call `get_precall_brief` with the lead name and "
+        "company, then follow the returned `sop` field EXACTLY, pulling any extra "
+        "context via the second_brain tools. If no matching history is found, say so "
+        "in the HISTORY section rather than inventing details."
+    )
+
+
+@mcp.prompt(title="Draft a follow-up")
+def followup(deal_name: str = "", transcript: str = "") -> str:
+    """Draft a post-call follow-up: email, proposal outline, and CRM update."""
+    return (
+        "Draft a post-call follow-up. Call `draft_followup` with the deal name (and "
+        "the call transcript if you have one), then follow the returned `sop` field "
+        "EXACTLY. Use the client's stored tone_of_voice and offers; never invent "
+        "pricing. Produce a draft for the user to review — never send anything."
+    )
+
+
+@mcp.prompt(title="Score a call")
+def score_a_call(transcript: str = "", rep_name: str = "") -> str:
+    """Score a sales call transcript against the coaching rubric."""
+    return (
+        "Score a sales call. Call `score_call` with the transcript (and rep name if "
+        "known), then follow the returned `sop` field EXACTLY to produce scores and "
+        "coaching feedback grounded in the client's ICP."
+    )
 
 
 if __name__ == "__main__":
