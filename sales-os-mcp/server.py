@@ -199,13 +199,21 @@ def create_quote(job_description: str, customer: str = "") -> dict:
 
 def _to_number(value) -> float:
     """Parse a possibly-messy numeric value: 4500, '4500', '$4,500.00', '40 sqm',
-    '6 months', '-$540' -> float. Returns 0.0 if no number is present."""
+    '6 months', '-$540', '($540)' -> float. Returns 0.0 if no number is present.
+    Preserves a negative sign even when a currency symbol sits between it and the
+    digits (e.g. '-$540' -> -540), and treats accounting parentheses as negative."""
     if isinstance(value, (int, float)):
         return float(value)
     if value is None:
         return 0.0
-    m = re.search(r"-?\d[\d,]*\.?\d*", str(value))
-    return float(m.group(0).replace(",", "")) if m else 0.0
+    s = str(value)
+    m = re.search(r"\d[\d,]*\.?\d*", s)
+    if not m:
+        return 0.0
+    magnitude = float(m.group(0).replace(",", ""))
+    prefix = s[: m.start()]
+    negative = "-" in prefix or "(" in prefix
+    return -magnitude if negative else magnitude
 
 
 class QuoteLineItem(BaseModel):

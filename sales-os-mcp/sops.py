@@ -59,8 +59,9 @@ errors, but never invent job details). Using ONLY the provided context:
    the customer, a short scope_summary, any notes/terms, and tax_rate if the
    rate card defines one. The server computes the amounts and totals and
    returns a `download_url` for a polished branded PDF (branding comes from
-   profile/branding). Do NOT pre-total the lines yourself. Give the user the
-   download_url — they can open it or send it straight to the customer.
+   profile/branding). Do NOT pre-total the lines yourself. Represent any
+   discount as its own line item with a NEGATIVE unit_price (e.g. -540). Give
+   the user the download_url — they can open it or send it to the customer.
 
 This is a DRAFT for human review. Never present it as sent or final."""
 
