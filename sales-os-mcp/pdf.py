@@ -162,7 +162,10 @@ def render_quote(
             "amount_fmt": money(amount),
         })
 
+    # Accept either a fraction (0.2) or a percentage (20) for tax_rate.
     rate = float(tax_rate or 0)
+    if rate > 1:
+        rate = rate / 100
     tax = subtotal * rate
     total = subtotal + tax
     today = _dt.date.today()

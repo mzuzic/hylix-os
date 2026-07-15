@@ -19,7 +19,7 @@ from fastmcp import FastMCP
 from fastmcp.server.auth.auth import MultiAuth
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_access_token
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from starlette.responses import FileResponse, Response
 
 import oauth as oauth_mod
@@ -197,12 +197,52 @@ def create_quote(job_description: str, customer: str = "") -> dict:
     }
 
 
+def _to_number(value) -> float:
+    """Parse a possibly-messy numeric value: 4500, '4500', '$4,500.00', '40 sqm',
+    '6 months', '-$540' -> float. Returns 0.0 if no number is present."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if value is None:
+        return 0.0
+    m = re.search(r"-?\d[\d,]*\.?\d*", str(value))
+    return float(m.group(0).replace(",", "")) if m else 0.0
+
+
 class QuoteLineItem(BaseModel):
     """One priced line on a quote. The server computes the line amount."""
-    description: str = Field(description="What the line covers, e.g. 'Interior painting'")
+    description: str = Field(default="", description="What the line covers, e.g. 'Interior painting'")
     quantity: float = Field(default=1, description="Amount of the unit, e.g. 40")
     unit: str = Field(default="", description="Unit label, e.g. 'sqm', 'hr', 'each'")
     unit_price: float = Field(default=0, description="Price per unit in the client's currency")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce(cls, data):
+        """Be forgiving about how the model phrases numbers/field names, so a
+        quote never fails on '$3,200.00', '6 months', or a 'rate'/'price' alias."""
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        for alias in ("rate", "price", "unit_cost", "amount_per_unit"):
+            if d.get("unit_price") in (None, "") and alias in d:
+                d["unit_price"] = d[alias]
+        for alias in ("qty", "count"):
+            if d.get("quantity") in (None, "") and alias in d:
+                d["quantity"] = d[alias]
+        for alias in ("desc", "item", "name", "title"):
+            if not d.get("description") and alias in d:
+                d["description"] = d[alias]
+        # If quantity carries its unit as text ('40 sqm'), lift the unit out.
+        q = d.get("quantity")
+        if isinstance(q, str) and not d.get("unit"):
+            um = re.search(r"[a-zA-Z%]+", q)
+            if um:
+                d["unit"] = um.group(0)
+        if isinstance(d.get("quantity"), str):
+            d["quantity"] = _to_number(d["quantity"])
+        if isinstance(d.get("unit_price"), str):
+            d["unit_price"] = _to_number(d["unit_price"])
+        return d
 
 
 @mcp.tool
