@@ -1,0 +1,15 @@
+services:
+  mcp:
+    build: .
+    container_name: sales_os_mcp
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      # bind to loopback only; nginx terminates TLS and proxies in
+      - "127.0.0.1:8002:8000"
+    volumes:
+      - sales_os_data:/data
+
+volumes:
+  sales_os_data:
