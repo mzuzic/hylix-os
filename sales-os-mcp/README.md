@@ -45,6 +45,10 @@ part of onboarding.
    prompt) calls `create_quote`.
 3. Server returns the quote SOP + the client's rate card (`profile/pricing`),
    offers, and tone. Claude drafts the quote for review and saves it to the deal.
+4. On approval, `render_quote_pdf` renders a branded PDF (from `profile/branding`)
+   and returns a shareable `download_url` (`/q/<token>.pdf`) the rep can send to
+   the customer. (A link, not an in-chat file — claude.ai doesn't surface MCP
+   file blobs as chat downloads.)
 
 SOPs live in `sops.py` (`REGISTRY`) — edit centrally, every client's next call
 gets the update.

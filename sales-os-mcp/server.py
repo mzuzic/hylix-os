@@ -12,14 +12,15 @@ Auth: bearer token per client. Set SALES_OS_TOKENS as JSON:
 import datetime as _dt
 import json
 import os
+import re
 import secrets
 
 from fastmcp import FastMCP
 from fastmcp.server.auth.auth import MultiAuth
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_access_token
-from fastmcp.utilities.types import File
 from pydantic import BaseModel, Field
+from starlette.responses import FileResponse, Response
 
 import oauth as oauth_mod
 import pdf as pdfgen
@@ -68,8 +69,9 @@ INSTRUCTIONS = (
     "- When the user describes or dictates a job, or asks to quote / price / estimate "
     "work, call `create_quote` with their words verbatim and follow the returned "
     "`sop` field EXACTLY. Never improvise a quote or pricing from memory. Once the "
-    "user approves the drafted quote, call `render_quote_pdf` to produce a polished, "
-    "branded PDF for them to download and send.\n"
+    "user approves the drafted quote, call `render_quote_pdf` and give the user the "
+    "returned `download_url` — a link to the polished, branded PDF they can open or "
+    "send straight to the customer.\n"
     "- Before a sales call, use `get_precall_brief`. After a call, use "
     "`draft_followup` and/or `score_call`.\n"
     "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
@@ -212,10 +214,11 @@ def render_quote_pdf(
     tax_rate: float = 0.0,
     valid_days: int = 14,
     currency: str = "",
-) -> File:
-    """Render a polished, branded PDF quote and return it as a downloadable file
-    in the conversation. Call this AFTER the user has approved the drafted quote
-    (see create_quote / the quote SOP).
+) -> dict:
+    """Render a polished, branded PDF quote and return a shareable download link.
+    Call this AFTER the user has approved the drafted quote (see create_quote /
+    the quote SOP). Give the user the returned `download_url` — they can open it
+    or send it straight to the customer.
 
     Pass structured line_items (description, quantity, unit, unit_price) — the
     server computes each line amount, the subtotal, tax, and total, so do NOT
@@ -240,24 +243,35 @@ def render_quote_pdf(
         quote_number=number,
     )
 
-    # Persist a copy on the data volume + note it in the deal history (best effort).
+    # Save under an unguessable token and expose it at a shareable URL. (claude.ai
+    # doesn't render an MCP file blob as a chat download, so we hand back a link.)
+    token = secrets.token_urlsafe(24)
+    url = f"{PUBLIC_URL.rstrip('/')}/q/{token}.pdf"
     try:
-        qdir = os.path.join(_DATA_DIR, "quotes", cid)
+        qdir = os.path.join(_DATA_DIR, "quotes")
         os.makedirs(qdir, exist_ok=True)
-        with open(os.path.join(qdir, f"{number}.pdf"), "wb") as fh:
+        with open(os.path.join(qdir, f"{token}.pdf"), "wb") as fh:
             fh.write(data)
     except OSError:
-        pass
+        return {"error": "Could not save the quote PDF. Please try again."}
+
     if customer:
         storage.write_doc(
             cid, "deal", customer,
             f"{_dt.date.today():%Y-%m-%d}: quote {number} generated "
-            f"({len(items)} line item(s)).",
+            f"({len(items)} line item(s)) — {url}",
             append=True,
         )
 
-    safe = (customer or "customer").strip().replace(" ", "-").lower() or "customer"
-    return File(data=data, format="pdf", name=f"quote-{safe}-{number}.pdf")
+    return {
+        "quote_number": number,
+        "customer": customer,
+        "download_url": url,
+        "message": (
+            f"Quote {number} is ready. Share this link with the customer "
+            f"(it opens the branded PDF): {url}"
+        ),
+    }
 
 
 @mcp.tool
@@ -326,8 +340,8 @@ def quote(job_description: str = "", customer: str = "") -> str:
         f"second_brain_write(category='profile', name='pricing', ...) first. The user "
         f"may be dictating by voice — expect rough phrasing and confirm any numbers you "
         f"are unsure about. After the user approves, call `render_quote_pdf` (passing "
-        f"the structured line items) to generate a branded PDF, and save the quote to "
-        f"deal/<customer> with second_brain_write. Never send anything; it's a draft."
+        f"the structured line items) and give the user the returned `download_url` for "
+        f"the branded PDF. Never send anything; it's a draft for the user to send."
     )
 
 
@@ -367,6 +381,23 @@ def score_a_call(transcript: str = "", rep_name: str = "") -> str:
 async def consent(request):
     """Login/consent page for the OAuth flow — user pastes their access key."""
     return await _oauth.handle_consent(request)
+
+
+@mcp.custom_route("/q/{filename}", methods=["GET"])
+async def serve_quote(request):
+    """Serve a rendered quote PDF by its unguessable token (shareable link)."""
+    filename = request.path_params["filename"]
+    token = filename[:-4] if filename.endswith(".pdf") else filename
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", token):
+        return Response("Not found", status_code=404)
+    path = os.path.join(_DATA_DIR, "quotes", f"{token}.pdf")
+    if not os.path.isfile(path):
+        return Response("Not found", status_code=404)
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{token}.pdf"'},
+    )
 
 
 if __name__ == "__main__":
