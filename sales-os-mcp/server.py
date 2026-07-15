@@ -15,11 +15,13 @@ import os
 import secrets
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.auth import MultiAuth
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_access_token
 from fastmcp.utilities.types import File
 from pydantic import BaseModel, Field
 
+import oauth as oauth_mod
 import pdf as pdfgen
 import sops
 import storage
@@ -37,12 +39,24 @@ if not _raw:
     )
 TOKEN_MAP: dict[str, str] = json.loads(_raw)
 
-auth = StaticTokenVerifier(
+# Public base URL where OAuth endpoints (/authorize, /token, /.well-known/*) are
+# served — must match the connector URL's origin.
+PUBLIC_URL = os.environ.get("SALES_OS_PUBLIC_URL", "https://salesos.hylix.ai")
+
+# OAuth persistence (signing secret, DCR clients) needs the DB before we build auth.
+storage.init_db()
+
+# Two ways in, composed with MultiAuth:
+#  - OAuth 2.1 (interactive clients like claude.ai) — see oauth.py
+#  - raw per-tenant bearer tokens (Claude Desktop, API, smoke test)
+_static = StaticTokenVerifier(
     tokens={
         token: {"client_id": client_id, "scopes": ["sales-os"]}
         for token, client_id in TOKEN_MAP.items()
     }
 )
+_oauth = oauth_mod.SalesOsOAuthProvider(base_url=PUBLIC_URL, tokens=TOKEN_MAP)
+auth = MultiAuth(server=_oauth, verifiers=[_static])
 
 # Sent to the client on connect (MCP `instructions`). This carries the behaviour
 # that used to live in the client-side stub skills, so clients only need to
@@ -68,8 +82,13 @@ mcp = FastMCP("Sales OS", auth=auth, instructions=INSTRUCTIONS)
 
 
 def _client() -> str:
-    """client_id of the authenticated tenant."""
-    return get_access_token().client_id
+    """client_id of the authenticated tenant.
+
+    OAuth tokens carry the tenant in `subject`; raw static tokens carry it in
+    `client_id`. Prefer subject, fall back to client_id.
+    """
+    tok = get_access_token()
+    return getattr(tok, "subject", None) or tok.client_id
 
 
 def _profile_context(client_id: str) -> dict[str, str]:
@@ -342,6 +361,12 @@ def score_a_call(transcript: str = "", rep_name: str = "") -> str:
         "known), then follow the returned `sop` field EXACTLY to produce scores and "
         "coaching feedback grounded in the client's ICP."
     )
+
+
+@mcp.custom_route("/consent", methods=["GET", "POST"])
+async def consent(request):
+    """Login/consent page for the OAuth flow — user pastes their access key."""
+    return await _oauth.handle_consent(request)
 
 
 if __name__ == "__main__":

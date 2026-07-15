@@ -36,6 +36,29 @@ def init_db() -> None:
             )
             """
         )
+        # Generic key-value store — used by the OAuth layer to persist the token
+        # signing secret and registered (DCR) clients across restarts.
+        conn.execute("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)")
+
+
+def kv_get(key: str) -> str | None:
+    with _conn() as conn:
+        r = conn.execute("SELECT v FROM kv WHERE k=?", (key,)).fetchone()
+        return r["v"] if r else None
+
+
+def kv_set(key: str, value: str) -> None:
+    with _lock, _conn() as conn:
+        conn.execute(
+            "INSERT INTO kv (k, v) VALUES (?, ?) "
+            "ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+            (key, value),
+        )
+
+
+def kv_delete(key: str) -> None:
+    with _lock, _conn() as conn:
+        conn.execute("DELETE FROM kv WHERE k=?", (key,))
 
 
 def _now() -> str:
