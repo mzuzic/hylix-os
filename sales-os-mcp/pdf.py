@@ -143,7 +143,7 @@ def render_quote(
     cur = currency or b["currency"] or "$"
 
     def money(x: float) -> str:
-        return f"{cur}{x:,.2f}"
+        return f"-{cur}{abs(x):,.2f}" if x < 0 else f"{cur}{x:,.2f}"
 
     items = []
     subtotal = 0.0
