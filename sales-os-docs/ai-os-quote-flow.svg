@@ -1,0 +1,63 @@
+<svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quote data flow">
+  <title>Hylix AI OS — dictated quote data flow</title>
+  <desc>Six steps: rep dictates a job by voice, the create-quote skill triggers, the server supplies SOP and rate card, Claude drafts the quote, the human approves, and the result is saved to the deal and drafted as an invoice.</desc>
+  <style>
+    .th { font: 600 14px 'Helvetica Neue', Arial, sans-serif; fill: #1f2937; }
+    .ts { font: 400 12px 'Helvetica Neue', Arial, sans-serif; fill: #6b7280; }
+    .arr { stroke: #6b7280; stroke-width: 1.5; fill: none; }
+    .blue rect { fill: #dbeafe; stroke: #3b82f6; }
+    .purple rect { fill: #ede9fe; stroke: #8b5cf6; }
+    .gray rect { fill: #f3f4f6; stroke: #9ca3af; }
+    .sw-blue { fill: #dbeafe; stroke: #3b82f6; }
+    .sw-purple { fill: #ede9fe; stroke: #8b5cf6; }
+    .sw-gray { fill: #f3f4f6; stroke: #9ca3af; }
+  </style>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+  <g class="blue">
+    <rect x="20" y="50" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="115" y="68" text-anchor="middle" dominant-baseline="central">1 · Rep dictates job</text>
+    <text class="ts" x="115" y="86" text-anchor="middle" dominant-baseline="central">voice, from the site</text>
+  </g>
+  <line x1="210" y1="78" x2="245" y2="78" class="arr" marker-end="url(#arrow)"/>
+  <g class="blue">
+    <rect x="245" y="50" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="68" text-anchor="middle" dominant-baseline="central">2 · Skill triggers</text>
+    <text class="ts" x="340" y="86" text-anchor="middle" dominant-baseline="central">create-quote stub</text>
+  </g>
+  <line x1="435" y1="78" x2="470" y2="78" class="arr" marker-end="url(#arrow)"/>
+  <g class="purple">
+    <rect x="470" y="50" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="565" y="68" text-anchor="middle" dominant-baseline="central">3 · Server context</text>
+    <text class="ts" x="565" y="86" text-anchor="middle" dominant-baseline="central">quote SOP + rate card</text>
+  </g>
+
+  <line x1="565" y1="106" x2="565" y2="150" class="arr" marker-end="url(#arrow)"/>
+
+  <g class="blue">
+    <rect x="470" y="150" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="565" y="168" text-anchor="middle" dominant-baseline="central">4 · Claude drafts</text>
+    <text class="ts" x="565" y="186" text-anchor="middle" dominant-baseline="central">prices lines, flags gaps</text>
+  </g>
+  <line x1="470" y1="178" x2="435" y2="178" class="arr" marker-end="url(#arrow)"/>
+  <g class="blue">
+    <rect x="245" y="150" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="168" text-anchor="middle" dominant-baseline="central">5 · Human approves</text>
+    <text class="ts" x="340" y="186" text-anchor="middle" dominant-baseline="central">edits on the phone</text>
+  </g>
+  <line x1="245" y1="178" x2="210" y2="178" class="arr" marker-end="url(#arrow)"/>
+  <g class="gray">
+    <rect x="20" y="150" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="115" y="168" text-anchor="middle" dominant-baseline="central">6 · Saved &amp; sent</text>
+    <text class="ts" x="115" y="186" text-anchor="middle" dominant-baseline="central">deal note · QBO invoice</text>
+  </g>
+
+  <text class="ts" x="340" y="245" text-anchor="middle">drafting runs in the rep's Claude session — the server only supplies context · ~2 minutes end to end</text>
+
+  <rect class="sw-blue" x="20" y="266" width="12" height="12" rx="3" stroke-width="0.5"/>
+  <text class="ts" x="38" y="272" dominant-baseline="central">client-side</text>
+  <rect class="sw-purple" x="130" y="266" width="12" height="12" rx="3" stroke-width="0.5"/>
+  <text class="ts" x="148" y="272" dominant-baseline="central">Hylix-hosted</text>
+  <rect class="sw-gray" x="252" y="266" width="12" height="12" rx="3" stroke-width="0.5"/>
+  <text class="ts" x="270" y="272" dominant-baseline="central">third-party tools</text>
+</svg>
