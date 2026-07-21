@@ -142,11 +142,37 @@ def second_brain_read(category: str, name: str) -> dict:
 
 @mcp.tool
 def second_brain_write(category: str, name: str, content: str, append: bool = False) -> dict:
-    """Create or update a Second Brain document. Categories: profile, deal,
-    transcript, other. Use append=True to add to an existing doc (e.g. deal notes).
+    """Create or update a Second Brain document. Common categories: profile,
+    deal, transcript, finance, marketing, events, other — any short lowercase
+    slug is accepted. Use append=True to add to an existing doc (e.g. deal notes).
     Conventions: profile/icp, profile/offers, profile/tone_of_voice,
-    deal/<company-name>, transcript/<company-name>-<date>."""
+    deal/<company-name>, transcript/<company-name>-<date>,
+    finance/monthly-<year>-<month>."""
     return storage.write_doc(_client(), category, name, content, append)
+
+
+@mcp.tool
+def second_brain_search(query: str, category: str = "") -> list[dict]:
+    """Case-insensitive search across the Second Brain by document name or
+    content. Returns up to 10 matches (newest first) with a snippet around the
+    match — use second_brain_read to fetch a full document. Optionally restrict
+    to one category (profile, deal, transcript, finance, ...)."""
+    results = storage.search_docs(_client(), query, category=category or None)
+    out = []
+    for r in results:
+        content = r.get("content") or ""
+        idx = content.lower().find(query.lower())
+        if idx >= 0:
+            start = max(0, idx - 120)
+            end = min(len(content), idx + len(query) + 120)
+            snippet = ("…" if start else "") + content[start:end] + ("…" if end < len(content) else "")
+        else:  # matched on the name
+            snippet = content[:160] + ("…" if len(content) > 160 else "")
+        out.append({
+            "category": r["category"], "name": r["name"],
+            "updated_at": r["updated_at"], "snippet": snippet,
+        })
+    return out
 
 
 @mcp.tool

@@ -5,9 +5,27 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 
+import re
+
 DB_PATH = os.environ.get("SALES_OS_DB", "sales_os.db")
 
-VALID_CATEGORIES = {"profile", "deal", "transcript", "other"}
+# Well-known categories (documented conventions). Writes are NOT limited to
+# these: any lowercase slug is accepted, so SOPs can introduce new areas
+# (finance, marketing, events, ...) without a server change.
+KNOWN_CATEGORIES = {"profile", "deal", "transcript", "finance", "marketing", "events", "other"}
+
+_CATEGORY_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
+
+
+def normalize_category(category: str) -> str:
+    """Lowercase and validate a category slug; raises ValueError if unusable."""
+    slug = (category or "").strip().lower()
+    if not _CATEGORY_RE.fullmatch(slug):
+        raise ValueError(
+            "category must be a short lowercase slug (letters/digits/-/_), "
+            f"e.g. one of {sorted(KNOWN_CATEGORIES)}"
+        )
+    return slug
 
 _lock = threading.Lock()
 
@@ -87,8 +105,7 @@ def read_doc(client_id: str, category: str, name: str) -> dict | None:
 
 
 def write_doc(client_id: str, category: str, name: str, content: str, append: bool = False) -> dict:
-    if category not in VALID_CATEGORIES:
-        raise ValueError(f"category must be one of {sorted(VALID_CATEGORIES)}")
+    category = normalize_category(category)
     with _lock, _conn() as conn:
         if append:
             existing = conn.execute(

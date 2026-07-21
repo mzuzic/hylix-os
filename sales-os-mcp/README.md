@@ -14,7 +14,8 @@ client gets the update instantly.
 | Tool | Purpose |
 |---|---|
 | `whoami` | Connectivity check; shows tenant |
-| `second_brain_list / read / write / delete` | CRUD on per-client docs (ICP, offers, tone, deal notes, transcripts) |
+| `second_brain_list / read / write / delete` | CRUD on per-client docs (ICP, offers, tone, deal notes, transcripts); any lowercase category slug (profile, deal, transcript, finance, marketing, ...) |
+| `second_brain_search(query, category?)` | Snippet search across docs by name or content (newest first) |
 | `get_precall_brief(lead_name, company)` | SOP + profile + matching deal history for a pre-call brief |
 | `draft_followup(deal_name, transcript?)` | SOP + tone + offers + notes for follow-up email / proposal / CRM update |
 | `score_call(transcript, rep_name?)` | Coaching rubric SOP + ICP context |

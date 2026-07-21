@@ -37,6 +37,20 @@ async def main():
         assert "2026-07-10" in r.data["content"] and "2026-07-14" in r.data["content"]
         ok += 1
 
+        # Search returns snippets, newest first
+        r = await c.call_tool("second_brain_search", {"query": "Henderson"})
+        assert r.data and any("henderson" in d["name"].lower() for d in r.data), r.data
+        assert all("snippet" in d for d in r.data), r.data
+        ok += 1
+
+        # Non-legacy categories are accepted (finance, marketing, ...)
+        await c.call_tool("second_brain_write", {
+            "category": "finance", "name": "monthly-2026-07",
+            "content": "Total spend $4,120 vs budget $5,000."})
+        r = await c.call_tool("second_brain_read", {"category": "finance", "name": "monthly-2026-07"})
+        assert "4,120" in r.data["content"], r.data
+        ok += 1
+
         r = await c.call_tool("get_precall_brief", {"lead_name": "Sarah Henderson", "company": "henderson"})
         assert "FIT SCORE" in r.data["sop"]
         assert r.data["profile"].get("icp") and len(r.data["matching_docs"]) >= 1
@@ -82,7 +96,7 @@ async def main():
         assert "401" in str(e) or "Unauthorized" in str(e) or "auth" in str(e).lower(), e
         ok += 1
 
-    print(f"PASS: {ok}/11 checks")
+    print(f"PASS: {ok}/13 checks")
 
 
 asyncio.run(main())
