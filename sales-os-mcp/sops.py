@@ -146,24 +146,54 @@ suggested next action with a draft opener line. End with counts by category.
 If evidence is thin, list it under 'possibly stale — verify' rather than
 asserting. This report is for the owner; keep it scannable."""
 
-MONTHLY_FINANCE_SOP = """\
-You are producing the monthly finance report from raw documents the client
-dropped into their folder (bank statements, supplier invoices, receipts —
-process them client-side; NEVER copy raw statements into the Second Brain).
+DOC_INTAKE_SOP = """\
+You are filing a document the client just shared (invoice, receipt, bank
+statement, supplier quote, contract/SOW...). Extract the data NOW, while the
+document is at hand — the Second Brain is the wiki of record. Raw files are
+NEVER stored there; only extracted data enters the wiki.
 
-1. EXTRACT — transactions from each document: date, payee, amount, category.
-   Flag unreadable/ambiguous items as [UNCLEAR] with the filename.
-2. CATEGORIZE — against finance/profile/budget categories (materials, fuel,
-   subs, tools, marketing, admin...). If no budget doc exists, propose one
-   first from the data.
+1. CLASSIFY — invoice / receipt / bank statement / supplier quote /
+   contract-SOW / other. If genuinely unsure, ask one short question.
+2. DEDUP — second_brain_search for the source filename (and payee + amount +
+   date). If it's already filed, say so and stop.
+3. EXTRACT & FILE:
+   - Financial docs → append one line per transaction to
+     finance/ledger-<year>-<month> (month of the TRANSACTION date):
+     `date | payee | amount | category | source: <filename>`
+     Categories from finance/budget; no match -> [UNCLEAR]. A statement
+     spanning months gets split across the right ledger docs.
+   - Supplier quotes / price lists → summarize to finance/supplier-<name>;
+     flag price changes vs the previous version.
+   - Contracts & signed SOWs → key terms (parties, value, dates,
+     obligations) appended to deal/<customer>.
+   - Anything else → other/<short-name> with a one-line description.
+4. CONFIRM — reply with what was filed where, totals added, and any
+   [UNCLEAR] items that need the owner's eye.
+
+Never invent amounts or dates — [UNCLEAR] beats a guess. Raw documents stay
+in the client's own storage."""
+
+MONTHLY_FINANCE_SOP = """\
+You are producing the monthly finance report. The wiki is the source of
+truth: doc_intake has been filing transactions into the ledger as documents
+arrived (raw statements are NEVER copied into the Second Brain).
+
+1. GATHER — read finance/ledger-<year>-<month> for the report month. If the
+   client provides raw documents not yet in the ledger (dedup by source
+   filename), extract and append them first per the doc_intake SOP.
+2. CATEGORIZE — against finance/budget categories (materials, fuel, subs,
+   tools, marketing, admin...). If no budget doc exists, propose one first
+   from the data.
 3. REPORT — spend by category vs budget; three sections: WHERE THE MONEY
    WENT, WHAT WENT WELL (under budget, good margins), WHERE TO SAVE NEXT
    MONTH (specific, e.g. duplicate subscriptions, supplier price creep).
+   Compare against the prior 1-2 finance/monthly-* reports and call out
+   trends (e.g. "fuel up 3 months in a row").
 4. STORE — write only the summary report and category totals to
-   finance/library/monthly-<year>-<month>. Raw documents stay in the
-   client's folder.
+   finance/monthly-<year>-<month>. Raw documents stay in the client's
+   folder.
 
-Numbers must add up — reconcile totals against the statements and say so.
+Numbers must add up — reconcile totals against the ledger and say so.
 This is bookkeeping support, not tax or accounting advice; recommend their
 accountant reviews it."""
 
@@ -181,7 +211,7 @@ Second Brain (and via connectors where available):
 4. OUTPUT — ranked opportunity list: the need, evidence count, example
    quotes, suggested offer (name + rough price using profile/pricing), and
    which existing customers to pitch first.
-5. STORE — write to marketing/library/opportunities-<quarter>.
+5. STORE — write to marketing/opportunities-<quarter>.
 
 Only claim patterns the evidence supports; note sample sizes. This informs
 the owner's judgment — it is not a directive to launch services."""
@@ -229,10 +259,15 @@ REGISTRY = {
         "sop": OPEN_LOOPS_SOP,
         "context_needed": ["deal/*", "transcript/*", "events"],
     },
+    "doc_intake": {
+        "description": "File a shared document on arrival: extract transactions/terms into the wiki",
+        "sop": DOC_INTAKE_SOP,
+        "context_needed": ["the shared document (client-side)", "finance/budget", "deal/*"],
+    },
     "monthly_finance": {
-        "description": "Monthly spend report from bank statements, invoices, and receipts vs budget",
+        "description": "Monthly spend report from the running ledger vs budget",
         "sop": MONTHLY_FINANCE_SOP,
-        "context_needed": ["PDFs client-side", "finance/profile/budget"],
+        "context_needed": ["finance/ledger-<year>-<month>", "finance/budget", "prior finance/monthly-*"],
     },
     "demand_mining": {
         "description": "Mine tickets, emails, and invoices for unmet customer needs and upsell opportunities",

@@ -74,6 +74,10 @@ INSTRUCTIONS = (
     "send straight to the customer.\n"
     "- Before a sales call, use `get_precall_brief`. After a call, use "
     "`draft_followup` and/or `score_call`.\n"
+    "- Whenever the user shares a document (invoice, receipt, bank statement, "
+    "supplier quote, contract), extract its data immediately: call "
+    "`get_sop('doc_intake')` and follow it, filing the extracted data into the "
+    "Second Brain. Never store the raw file there. More procedures: `list_sops`.\n"
     "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
     "`second_brain_*` tools rather than inventing them, and follow each tool's "
     "returned `sop` exactly.\n"
@@ -438,6 +442,21 @@ def followup(deal_name: str = "", transcript: str = "") -> str:
         "the call transcript if you have one), then follow the returned `sop` field "
         "EXACTLY. Use the client's stored tone_of_voice and offers; never invent "
         "pricing. Produce a draft for the user to review — never send anything."
+    )
+
+
+@mcp.prompt(title="File a document")
+def file_document() -> str:
+    """Extract data from a shared document (invoice, receipt, statement,
+    supplier quote, contract) and file it into the Second Brain wiki."""
+    return (
+        "The user is sharing a document to file. Call `get_sop` with name "
+        "'doc_intake' and follow the returned `sop` field EXACTLY: classify the "
+        "document, dedup against the wiki with second_brain_search, extract the "
+        "data (transactions to the finance ledger, contract terms to the deal, "
+        "supplier prices to finance/supplier-<name>), and confirm what was filed "
+        "where. Never store the raw file in the Second Brain, and never invent "
+        "amounts or dates — mark anything unreadable as [UNCLEAR]."
     )
 
 
