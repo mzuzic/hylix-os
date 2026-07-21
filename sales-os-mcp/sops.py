@@ -62,6 +62,10 @@ errors, but never invent job details). Using ONLY the provided context:
    profile/branding). Do NOT pre-total the lines yourself. Represent any
    discount as its own line item with a NEGATIVE unit_price (e.g. -540). Give
    the user the download_url — they can open it or send it to the customer.
+   Then append an expected-revenue line to finance/ledger-<year>-<month>:
+   `date | <customer> (expected income) | <quote total> | revenue-expected |
+   deal: <customer-slug> | source: quote <number>` so project_pnl can track
+   quoted vs invoiced.
 
 This is a DRAFT for human review. Never present it as sent or final."""
 
@@ -159,9 +163,14 @@ NEVER stored there; only extracted data enters the wiki.
 3. EXTRACT & FILE:
    - Financial docs → append one line per transaction to
      finance/ledger-<year>-<month> (month of the TRANSACTION date):
-     `date | payee | amount | category | source: <filename>`
+     `date | payee | amount | category [| deal: <slug>] | source: <filename>`
      Categories from finance/budget; no match -> [UNCLEAR]. A statement
      spanning months gets split across the right ledger docs.
+     PROJECT TAG: recurring known vendors (rent, utilities, bank, accounting,
+     subscriptions) are overhead — no tag. For anything unusual, large, or
+     clearly job-related, ask which client/project it belongs to and add
+     `deal: <slug>` (slug = the deal/<slug> doc name). Never guess the tag.
+     Income lines get the tag of the deal they were invoiced under.
    - Supplier quotes / price lists → summarize to finance/supplier-<name>;
      flag price changes vs the previous version.
    - Contracts & signed SOWs → key terms (parties, value, dates,
@@ -196,6 +205,32 @@ arrived (raw statements are NEVER copied into the Second Brain).
 Numbers must add up — reconcile totals against the ledger and say so.
 This is bookkeeping support, not tax or accounting advice; recommend their
 accountant reviews it."""
+
+PROJECT_PNL_SOP = """\
+You are producing per-project profit & loss from the Second Brain.
+
+Data model: finance/ledger-* lines may carry an optional 'deal: <slug>' tag.
+Tagged lines are direct project income/costs; untagged lines are overhead.
+
+1. GATHER — second_brain_search for 'deal:' across finance docs (or
+   'deal: <slug>' if asked about one project). Read the matching deal/<slug>
+   docs for quotes, scope, and promised amounts.
+2. COMPUTE — per project: invoiced revenue, direct costs, contribution margin
+   (amount and %). Keep currencies separate; use the RSD equivalent recorded
+   on the line, never an invented FX rate. Show overhead (untagged spend) as
+   one separate line — do NOT allocate it across projects.
+3. QUOTED vs ACTUAL — where deal docs contain a quote, compare quoted total
+   to invoiced revenue and direct costs; call out work priced too low and
+   patterns worth repricing.
+4. HYGIENE — flag: large untagged expenses (suggest a deal tag), projects
+   with costs but no revenue (unbilled work — offer to draft the invoice
+   chaser), revenue with no costs (likely missing tags), and expected income
+   past its due date.
+5. STORE — write the summary to finance/pnl-<year>-Q<quarter> (overwriting is
+   fine; the ledgers remain the source of truth).
+
+Numbers must reconcile to the ledgers — say so explicitly. This informs
+pricing and cash decisions; it is not accounting or tax advice."""
 
 DEMAND_MINING_SOP = """\
 You are mining the client's own communications for unmet demand. Scan
@@ -273,5 +308,10 @@ REGISTRY = {
         "description": "Mine tickets, emails, and invoices for unmet customer needs and upsell opportunities",
         "sop": DEMAND_MINING_SOP,
         "context_needed": ["events history", "profile/offers"],
+    },
+    "project_pnl": {
+        "description": "Per-project P&L: revenue vs direct costs per deal, quoted-vs-actual, margin ranking",
+        "sop": PROJECT_PNL_SOP,
+        "context_needed": ["finance/ledger-* (deal: tags)", "deal/*"],
     },
 }
