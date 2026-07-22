@@ -278,8 +278,10 @@ pages only. Check in this order (impact-ranked per verified 2026 research):
    specifically what they have that this business lacks.
 5. OUTPUT — a scored fix list: each finding gets IMPACT (high/med/low, per
    the ranking research), EFFORT (quick/moderate/project), and a concrete
-   fix. Lead with the top 3. Save to marketing/site-audit-<domain>; offer a
-   client-facing summary (suitable for a branded PDF) on request.
+   fix. Lead with the top 3. Save to marketing/site-audit-<domain>. Then call
+   `render_audit_pdf` with the STRUCTURED findings (title, impact, effort,
+   fix, detail) plus a 2-3 sentence summary and the not-checked list — it
+   returns a branded, client-facing PDF download link to share.
 
 GUARDRAILS — never recommend, even if asked: review gating (filtering
 unhappy customers before they reach Google), incentivized/purchased reviews,

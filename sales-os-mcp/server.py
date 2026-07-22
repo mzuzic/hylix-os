@@ -352,6 +352,82 @@ def render_quote_pdf(
     }
 
 
+class AuditFinding(BaseModel):
+    """One audit finding. Impact/effort are normalized server-side — send what you have."""
+    title: str = Field(description="Short name of the issue, e.g. 'No dedicated service pages'")
+    impact: str = Field(default="med", description="high | med | low")
+    effort: str = Field(default="", description="quick | moderate | project")
+    fix: str = Field(default="", description="The concrete recommended fix, one or two sentences")
+    detail: str = Field(default="", description="Optional supporting detail/evidence")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce(cls, data):
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        imp = str(d.get("impact", "med")).strip().lower()
+        d["impact"] = {"medium": "med", "mid": "med", "critical": "high", "severe": "high",
+                       "minor": "low"}.get(imp, imp)
+        if d["impact"] not in ("high", "med", "low"):
+            d["impact"] = "med"
+        d["effort"] = str(d.get("effort", "")).strip().lower()
+        return d
+
+
+@mcp.tool
+def render_audit_pdf(
+    business_name: str,
+    website: str = "",
+    summary: str = "",
+    findings: list[AuditFinding] | None = None,
+    not_checked: list[str] | None = None,
+) -> dict:
+    """Render the site_audit results as a branded PDF report and return a
+    shareable download link — the client-facing deliverable/leave-behind.
+    Call AFTER completing the site_audit SOP. Pass the findings structured
+    (title, impact high/med/low, effort quick/moderate/project, fix, detail);
+    the server sorts by impact and takes the first three as Top Priorities.
+    Agency branding comes from profile/branding. The link is also appended to
+    marketing/site-audit-<domain> automatically."""
+    cid = _client()
+    branding = _branding(cid)
+    items = [f.model_dump() for f in (findings or [])]
+
+    data = pdfgen.render_audit(
+        business_name=business_name,
+        website=website,
+        summary=summary,
+        findings=items,
+        not_checked=not_checked or [],
+        branding=branding,
+    )
+
+    token = secrets.token_urlsafe(24)
+    url = f"{PUBLIC_URL.rstrip('/')}/q/{token}.pdf"
+    try:
+        qdir = os.path.join(_DATA_DIR, "quotes")
+        os.makedirs(qdir, exist_ok=True)
+        with open(os.path.join(qdir, f"{token}.pdf"), "wb") as fh:
+            fh.write(data)
+    except OSError:
+        return {"error": "Could not save the audit PDF. Please try again."}
+
+    domain = (website.replace("https://", "").replace("http://", "").strip("/")
+              or business_name.strip().replace(" ", "-").lower())
+    storage.write_doc(
+        cid, "marketing", f"site-audit-{domain}",
+        f"{_dt.date.today():%Y-%m-%d}: branded audit PDF generated — {url}",
+        append=True,
+    )
+
+    return {
+        "business": business_name,
+        "download_url": url,
+        "message": f"Audit report for {business_name} is ready — share this link: {url}",
+    }
+
+
 @mcp.tool
 def get_precall_brief(lead_name: str, company: str = "") -> dict:
     """Assemble everything needed for a pre-call brief on a lead/company.
