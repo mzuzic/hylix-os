@@ -251,6 +251,48 @@ Second Brain (and via connectors where available):
 Only claim patterns the evidence supports; note sample sizes. This informs
 the owner's judgment — it is not a directive to launch services."""
 
+SITE_AUDIT_SOP = """\
+You are auditing a local business's web presence (website + Google Business
+Profile) and producing a prioritized fix list. Use web fetch/search on PUBLIC
+pages only. Check in this order (impact-ranked per verified 2026 research):
+
+1. ON-SITE (drives local organic):
+   a. Dedicated page per service — the #1 local-organic factor. List each
+      service offered (from the site/GBP) that has NO dedicated page.
+   b. Service+city keywords in <title>, H1, and body of key pages.
+   c. LocalBusiness schema (JSON-LD) present on the homepage?
+   d. NAP (name, address, phone) on the site, EXACTLY matching the GBP.
+   e. Map embed, click-to-call phone link, mobile-usable layout.
+2. GBP CROSS-CHECK (drives map pack):
+   a. Primary category vs the categories of the top-3 map-pack competitors
+      (search the main service + city to find them).
+   b. Address visible? Service-area businesses hiding it rank worse.
+   c. Hours complete; services list filled; photo count reasonable.
+   d. Reviews: past ~10 total? Any review in the last 3 months (74% of
+      consumers check)? Owner responding to reviews (80% favor businesses
+      that respond)?
+3. PROMINENCE: search "exact business name" in quotes — citation count and
+   NAP consistency; presence on any best-of-<city> lists or local press
+   (the main lever for AI-surface visibility).
+4. COMPETITOR GAP: run checks 1-2 on the #1 map-pack competitor and state
+   specifically what they have that this business lacks.
+5. OUTPUT — a scored fix list: each finding gets IMPACT (high/med/low, per
+   the ranking research), EFFORT (quick/moderate/project), and a concrete
+   fix. Lead with the top 3. Save to marketing/site-audit-<domain>; offer a
+   client-facing summary (suitable for a branded PDF) on request.
+
+GUARDRAILS — never recommend, even if asked: review gating (filtering
+unhappy customers before they reach Google), incentivized/purchased reviews,
+bribing reviewers to remove reviews, mass-reporting real reviews as fake,
+virtual/co-working addresses, keyword-stuffing the business name, duplicate
+listings, or CTR manipulation. These carry documented Google penalties up to
+review freezes, unpublishing all reviews with a public warning, and listing
+suspension. If asked, explain the risk and offer the compliant alternative.
+
+Base claims only on what you actually fetched/found; mark anything you could
+not verify as [NOT CHECKED]. This is marketing guidance, not a guarantee of
+rankings."""
+
 
 # Registry served by get_sop / list_sops. Edit here -> all clients updated.
 REGISTRY = {
@@ -313,5 +355,10 @@ REGISTRY = {
         "description": "Per-project P&L: revenue vs direct costs per deal, quoted-vs-actual, margin ranking",
         "sop": PROJECT_PNL_SOP,
         "context_needed": ["finance/ledger-* (deal: tags)", "deal/*"],
+    },
+    "site_audit": {
+        "description": "Audit a local business website + GBP and produce a prioritized, compliant fix list",
+        "sop": SITE_AUDIT_SOP,
+        "context_needed": ["website URL + business name", "web fetch/search (client-side)"],
     },
 }
