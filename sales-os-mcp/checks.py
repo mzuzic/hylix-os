@@ -75,9 +75,14 @@ async def analyze_site(url: str) -> dict:
             continue
         items = data if isinstance(data, list) else [data]
         for item in items:
-            if isinstance(item, dict):
-                t = item.get("@type", "unknown")
-                schema_types.append(t if isinstance(t, str) else list(t))
+            if not isinstance(item, dict):
+                continue
+            # WordPress/Yoast wrap everything in a @graph array
+            nodes = item.get("@graph") if isinstance(item.get("@graph"), list) else [item]
+            for node in nodes:
+                if isinstance(node, dict):
+                    t = node.get("@type", "unknown")
+                    schema_types.append(t if isinstance(t, str) else list(t))
 
     return {
         "url": final_url,
