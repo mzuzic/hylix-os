@@ -259,23 +259,28 @@ pages only. Check in this order (impact-ranked per verified 2026 research):
 1. ON-SITE (drives local organic):
    a. Dedicated page per service — the #1 local-organic factor. List each
       service offered (from the site/GBP) that has NO dedicated page.
-   b. Service+city keywords in <title>, H1, and body of key pages.
-   c. LocalBusiness schema (JSON-LD) present on the homepage?
+   b. FIRST fetch https://salesos.hylix.ai/check/site?url=<website> — it
+      returns raw-HTML facts your normal fetch strips: <title>, H1s, JSON-LD
+      schema types, viewport meta, tel: links, map embed. Trust it over your
+      own rendered fetch for those fields, and browse the site normally for
+      content/services/NAP.
+   c. Service+city keywords in the title, H1, and body of key pages.
    d. NAP (name, address, phone) on the site, EXACTLY matching the GBP.
-   e. Map embed, click-to-call phone link, mobile-usable layout.
 2. GBP CROSS-CHECK (drives map pack):
-   a. Does a GBP EXIST at all? Search the exact business name AND the phone
-      number on Google Maps. If no listing surfaces, that is automatically
-      the #1 finding — the business cannot rank in the map pack, and its
-      brand-name searches hand customers to competitors.
-   b. Primary category vs the categories of the top-3 map-pack competitors
-      (search the main service + city to find them).
+   a. Fetch https://salesos.hylix.ai/check/gbp?q=<business+name+city> — it
+      returns official rating, review count, primary category, hours,
+      business status, and newest-visible-review time. Repeat for the top-3
+      competitors (search the main service + city to identify them first).
+      If it answers "not configured", fall back to Maps via search and say
+      which method you used.
+   b. Does a GBP EXIST at all? If /check/gbp and a name+phone search both
+      find nothing, that is automatically the #1 finding — the business
+      cannot rank in the map pack, and its brand-name searches hand
+      customers to competitors.
    c. Address visible? Service-area businesses hiding it rank worse.
-   d. Hours complete; services list filled; photo count reasonable.
-   e. Reviews: record the count AND rating for the business and the top-3
-      competitors (Maps shows "4.3(74)"). Past ~10 total? Any review in the
-      last 3 months (74% of consumers check)? Owner responding (80% favor
-      businesses that respond)?
+   d. Reviews: past ~10 total? Any review in the last 3 months (74% of
+      consumers check)? Owner responding (80% favor businesses that
+      respond — response rate needs a manual look at the listing)?
 3. PPC CHECK: Google Ads Transparency Center —
    adstransparency.google.com/?domain=<domain>&region=<country> — shows every
    ad the domain has run and the advertiser name; note count and recency.

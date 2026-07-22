@@ -20,8 +20,10 @@ from fastmcp.server.auth.auth import MultiAuth
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_access_token
 from pydantic import BaseModel, Field, model_validator
-from starlette.responses import FileResponse, Response
+import httpx
+from starlette.responses import FileResponse, JSONResponse, Response
 
+import checks
 import oauth as oauth_mod
 import pdf as pdfgen
 import sops
@@ -646,6 +648,35 @@ def score_a_call(transcript: str = "", rep_name: str = "") -> str:
 async def consent(request):
     """Login/consent page for the OAuth flow — user pastes their access key."""
     return await _oauth.handle_consent(request)
+
+
+@mcp.custom_route("/check/site", methods=["GET"])
+async def check_site(request):
+    """Raw-HTML site facts (title, H1, JSON-LD, viewport, tel:, map embed) as
+    JSON — fetched by client-side Claude during site_audit, since chat fetches
+    strip these from rendered pages."""
+    url = request.query_params.get("url", "").strip()
+    if not url:
+        return JSONResponse({"error": "Pass ?url=https://example.com"}, status_code=400)
+    try:
+        return JSONResponse(await checks.analyze_site(url))
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except httpx.HTTPError as e:
+        return JSONResponse({"error": f"Fetch failed: {e}"}, status_code=502)
+
+
+@mcp.custom_route("/check/gbp", methods=["GET"])
+async def check_gbp(request):
+    """Google Business Profile facts (rating, review count, category, hours,
+    recency) via the official Places API, as JSON for client-side fetches."""
+    q = request.query_params.get("q", "").strip()
+    if not q:
+        return JSONResponse({"error": "Pass ?q=business+name+city"}, status_code=400)
+    try:
+        return JSONResponse(await checks.gbp_lookup(q))
+    except httpx.HTTPError as e:
+        return JSONResponse({"error": f"Lookup failed: {e}"}, status_code=502)
 
 
 @mcp.custom_route("/q/{filename}", methods=["GET"])
