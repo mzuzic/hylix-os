@@ -279,6 +279,9 @@ pages only. Check in this order (impact-ranked per verified 2026 research):
 3. PPC CHECK: Google Ads Transparency Center —
    adstransparency.google.com/?domain=<domain>&region=<country> — shows every
    ad the domain has run and the advertiser name; note count and recency.
+   That page is JS-rendered: if your fetch fails, do NOT mark it unchecked
+   and move on — give the user the exact clickable URL and ask them to open
+   it and tell you the ad count shown (a 10-second step), then continue.
    Also note any "Sponsored" results seen on the head keyword in Maps/SERP
    (geo-dependent — say where you searched from). Competitor ad activity =
    the market has paid intent worth a PPC conversation.
