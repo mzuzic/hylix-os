@@ -264,19 +264,30 @@ pages only. Check in this order (impact-ranked per verified 2026 research):
    d. NAP (name, address, phone) on the site, EXACTLY matching the GBP.
    e. Map embed, click-to-call phone link, mobile-usable layout.
 2. GBP CROSS-CHECK (drives map pack):
-   a. Primary category vs the categories of the top-3 map-pack competitors
+   a. Does a GBP EXIST at all? Search the exact business name AND the phone
+      number on Google Maps. If no listing surfaces, that is automatically
+      the #1 finding — the business cannot rank in the map pack, and its
+      brand-name searches hand customers to competitors.
+   b. Primary category vs the categories of the top-3 map-pack competitors
       (search the main service + city to find them).
-   b. Address visible? Service-area businesses hiding it rank worse.
-   c. Hours complete; services list filled; photo count reasonable.
-   d. Reviews: past ~10 total? Any review in the last 3 months (74% of
-      consumers check)? Owner responding to reviews (80% favor businesses
-      that respond)?
-3. PROMINENCE: search "exact business name" in quotes — citation count and
+   c. Address visible? Service-area businesses hiding it rank worse.
+   d. Hours complete; services list filled; photo count reasonable.
+   e. Reviews: record the count AND rating for the business and the top-3
+      competitors (Maps shows "4.3(74)"). Past ~10 total? Any review in the
+      last 3 months (74% of consumers check)? Owner responding (80% favor
+      businesses that respond)?
+3. PPC CHECK: Google Ads Transparency Center —
+   adstransparency.google.com/?domain=<domain>&region=<country> — shows every
+   ad the domain has run and the advertiser name; note count and recency.
+   Also note any "Sponsored" results seen on the head keyword in Maps/SERP
+   (geo-dependent — say where you searched from). Competitor ad activity =
+   the market has paid intent worth a PPC conversation.
+4. PROMINENCE: search "exact business name" in quotes — citation count and
    NAP consistency; presence on any best-of-<city> lists or local press
    (the main lever for AI-surface visibility).
-4. COMPETITOR GAP: run checks 1-2 on the #1 map-pack competitor and state
+5. COMPETITOR GAP: run checks 1-2 on the #1 map-pack competitor and state
    specifically what they have that this business lacks.
-5. OUTPUT — a scored fix list: each finding gets IMPACT (high/med/low, per
+6. OUTPUT — a scored fix list: each finding gets IMPACT (high/med/low, per
    the ranking research), EFFORT (quick/moderate/project), and a concrete
    fix. Lead with the top 3. Save to marketing/site-audit-<domain>. Then call
    `render_audit_pdf` with the STRUCTURED findings (title, impact, effort,
