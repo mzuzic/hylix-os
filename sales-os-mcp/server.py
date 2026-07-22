@@ -78,6 +78,10 @@ INSTRUCTIONS = (
     "supplier quote, contract), extract its data immediately: call "
     "`get_sop('doc_intake')` and follow it, filing the extracted data into the "
     "Second Brain. Never store the raw file there. More procedures: `list_sops`.\n"
+    "- When the user asks to audit a website or a business's Google presence, call "
+    "`get_sop` with name 'site_audit' and follow it exactly, finishing with "
+    "`render_audit_pdf`. More workflows are listed by `list_sops` — check there "
+    "before improvising any multi-step business task.\n"
     "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
     "`second_brain_*` tools rather than inventing them, and follow each tool's "
     "returned `sop` exactly.\n"
@@ -533,6 +537,24 @@ def file_document() -> str:
         "supplier prices to finance/supplier-<name>), and confirm what was filed "
         "where. Never store the raw file in the Second Brain, and never invent "
         "amounts or dates — mark anything unreadable as [UNCLEAR]."
+    )
+
+
+@mcp.prompt(title="Site audit (local SEO)")
+def site_audit(website: str = "", business_name: str = "") -> str:
+    """Audit a local business's website + Google presence and produce a branded
+    PDF report. Use when prospecting or onboarding a local business."""
+    target = website or "the website the user provides (ask if missing)"
+    return (
+        f"Run a local SEO audit on {target}"
+        f"{f' (business: {business_name})' if business_name else ''}. "
+        "Call `get_sop` with name 'site_audit' and follow the returned SOP EXACTLY: "
+        "fetch the site, check the Google Business Profile (existence, reviews, "
+        "claim status), citations, competitors, and ads history where reachable. "
+        "Mark anything you cannot verify as [NOT CHECKED] — never guess. Save the "
+        "findings with second_brain_write, then call `render_audit_pdf` with the "
+        "structured findings and give the user the download link. Recommend only "
+        "Google-policy-compliant tactics."
     )
 
 
