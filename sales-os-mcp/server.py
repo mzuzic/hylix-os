@@ -85,6 +85,11 @@ INSTRUCTIONS = (
     "- Always pull pricing, tone of voice, ICP, offers, and deal history via the "
     "`second_brain_*` tools rather than inventing them, and follow each tool's "
     "returned `sop` exactly.\n"
+    "- If an SOP names a tool you cannot see, try `render_pdf` with the document "
+    "kind the SOP describes; if that is also unavailable, complete every other "
+    "step and tell the user to start a NEW chat (or reconnect this connector) "
+    "because the toolset was recently updated. Never substitute an unrelated "
+    "tool for the one the SOP names.\n"
     "- Everything you produce is a draft for the user to review. Never send anything."
 )
 
@@ -287,8 +292,7 @@ class QuoteLineItem(BaseModel):
         return d
 
 
-@mcp.tool
-def render_quote_pdf(
+def _render_quote_impl(
     customer: str,
     line_items: list[QuoteLineItem],
     scope_summary: str = "",
@@ -297,17 +301,6 @@ def render_quote_pdf(
     valid_days: int = 14,
     currency: str = "",
 ) -> dict:
-    """Render a polished, branded PDF quote and return a shareable download link.
-    Call this AFTER the user has approved the drafted quote (see create_quote /
-    the quote SOP). Give the user the returned `download_url` — they can open it
-    or send it straight to the customer.
-
-    Pass structured line_items (description, quantity, unit, unit_price) — the
-    server computes each line amount, the subtotal, tax, and total, so do NOT
-    pre-compute or round totals yourself. tax_rate is a fraction (0.2 = 20%);
-    omit or 0 for none. Branding (business name, logo, colours, address, tax id,
-    currency) is pulled from the client's profile/branding doc. A copy is saved
-    to the deal history automatically."""
     cid = _client()
     branding = _branding(cid)
     items = [li.model_dump() for li in line_items]
@@ -356,6 +349,33 @@ def render_quote_pdf(
     }
 
 
+@mcp.tool
+def render_quote_pdf(
+    customer: str,
+    line_items: list[QuoteLineItem],
+    scope_summary: str = "",
+    notes: str = "",
+    tax_rate: float = 0.0,
+    valid_days: int = 14,
+    currency: str = "",
+) -> dict:
+    """Render a polished, branded PDF quote and return a shareable download link.
+    Call this AFTER the user has approved the drafted quote (see create_quote /
+    the quote SOP). Give the user the returned `download_url` — they can open it
+    or send it straight to the customer.
+
+    Pass structured line_items (description, quantity, unit, unit_price) — the
+    server computes each line amount, the subtotal, tax, and total, so do NOT
+    pre-compute or round totals yourself. tax_rate is a fraction (0.2 = 20%);
+    omit or 0 for none. Branding (business name, logo, colours, address, tax id,
+    currency) is pulled from the client's profile/branding doc. A copy is saved
+    to the deal history automatically."""
+    return _render_quote_impl(
+        customer=customer, line_items=line_items, scope_summary=scope_summary,
+        notes=notes, tax_rate=tax_rate, valid_days=valid_days, currency=currency,
+    )
+
+
 class AuditFinding(BaseModel):
     """One audit finding. Impact/effort are normalized server-side — send what you have."""
     title: str = Field(description="Short name of the issue, e.g. 'No dedicated service pages'")
@@ -379,21 +399,13 @@ class AuditFinding(BaseModel):
         return d
 
 
-@mcp.tool
-def render_audit_pdf(
+def _render_audit_impl(
     business_name: str,
     website: str = "",
     summary: str = "",
     findings: list[AuditFinding] | None = None,
     not_checked: list[str] | None = None,
 ) -> dict:
-    """Render the site_audit results as a branded PDF report and return a
-    shareable download link — the client-facing deliverable/leave-behind.
-    Call AFTER completing the site_audit SOP. Pass the findings structured
-    (title, impact high/med/low, effort quick/moderate/project, fix, detail);
-    the server sorts by impact and takes the first three as Top Priorities.
-    Agency branding comes from profile/branding. The link is also appended to
-    marketing/site-audit-<domain> automatically."""
     cid = _client()
     branding = _branding(cid)
     items = [f.model_dump() for f in (findings or [])]
@@ -429,6 +441,68 @@ def render_audit_pdf(
         "business": business_name,
         "download_url": url,
         "message": f"Audit report for {business_name} is ready — share this link: {url}",
+    }
+
+
+@mcp.tool
+def render_audit_pdf(
+    business_name: str,
+    website: str = "",
+    summary: str = "",
+    findings: list[AuditFinding] | None = None,
+    not_checked: list[str] | None = None,
+) -> dict:
+    """Render the site_audit results as a branded PDF report and return a
+    shareable download link — the client-facing deliverable/leave-behind.
+    Call AFTER completing the site_audit SOP. Pass the findings structured
+    (title, impact high/med/low, effort quick/moderate/project, fix, detail);
+    the server sorts by impact and takes the first three as Top Priorities.
+    Agency branding comes from profile/branding. The link is also appended to
+    marketing/site-audit-<domain> automatically."""
+    return _render_audit_impl(
+        business_name=business_name, website=website, summary=summary,
+        findings=findings, not_checked=not_checked,
+    )
+
+
+@mcp.tool
+def render_pdf(kind: str, document: dict) -> dict:
+    """Render ANY branded PDF document by kind and return a shareable download
+    link. This is the stable, future-proof renderer: SOPs may name new document
+    kinds over time and they are added server-side without changing the tool
+    list. Current kinds:
+    - 'quote'  — document: {customer, line_items:[{description, quantity, unit,
+      unit_price}], scope_summary?, notes?, tax_rate?, valid_days?, currency?}
+    - 'audit'  — document: {business_name, website?, summary?, findings:[{title,
+      impact, effort, fix, detail?}], not_checked?:[str]}
+    Prefer the dedicated render_quote_pdf / render_audit_pdf when visible; use
+    this whenever an SOP names a document kind you have no dedicated tool for."""
+    k = (kind or "").strip().lower()
+    d = document or {}
+    if k == "quote":
+        items = [QuoteLineItem.model_validate(x) for x in d.get("line_items", []) or []]
+        return _render_quote_impl(
+            customer=str(d.get("customer", "")),
+            line_items=items,
+            scope_summary=str(d.get("scope_summary", "")),
+            notes=str(d.get("notes", "")),
+            tax_rate=_to_number(d.get("tax_rate", 0)),
+            valid_days=int(_to_number(d.get("valid_days", 14)) or 14),
+            currency=str(d.get("currency", "")),
+        )
+    if k == "audit":
+        finds = [AuditFinding.model_validate(x) for x in d.get("findings", []) or []]
+        return _render_audit_impl(
+            business_name=str(d.get("business_name", "")),
+            website=str(d.get("website", "")),
+            summary=str(d.get("summary", "")),
+            findings=finds,
+            not_checked=[str(x) for x in d.get("not_checked", []) or []],
+        )
+    return {
+        "error": f"Unknown document kind '{kind}'.",
+        "available_kinds": ["quote", "audit"],
+        "hint": "New kinds are added server-side; re-check the SOP for the exact kind name.",
     }
 
 
